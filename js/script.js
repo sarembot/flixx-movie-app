@@ -15,8 +15,7 @@ function highlightLink() {
   });
 }
 
-// make fetch request to moviedb, get popular movies, display them on the page
-
+// Fetch data
 async function fetchApiData(endpoint) {
   const API_KEY = '6969dc387a25455aada3bf89c5cbed31';
   const API_URL = 'https://api.themoviedb.org/3/';
@@ -33,18 +32,63 @@ async function fetchApiData(endpoint) {
 async function displayPopularMovies() {
   const popularMovies = await fetchApiData('movie/popular');
 
-  console.log(popularMovies.results);
+  popularMovies.results.forEach((movie) => {
+    const container = document.getElementById('popular-movies');
+    const movieDiv = document.createElement('div');
+    movieDiv.innerHTML = `<div class="card">
+          <a href="movie-details.html?id=${movie.id}">
+            ${
+              movie.poster_path
+                ? `<img
+              src="https://image.tmdb.org/t/p/w500/${movie.poster_path}"
+              class="card-img-top"
+              alt="Movie Title"
+            />`
+                : `<img
+              src="images/no-image.jpg"
+              class="card-img-top"
+              alt="${movie.title}"
+            />`
+            }
+          </a>
+          <div class="card-body">
+            <h5 class="card-title">${movie.title}</h5>
+            <p class="card-text">
+              <small class="text-muted">Release: ${movie.release_date}</small>
+            </p>
+          </div>`;
+
+    container.appendChild(movieDiv);
+    const movieTitle = document.querySelector('.card-title');
+    const releaseDate = document.querySelector('.text-muted');
+
+    movieTitle.innerText = movie.title;
+    releaseDate.innerText = movie.release_date;
+  });
+}
+
+// Display TV Shows
+async function displayShows() {
+  const shows = await fetchApiData('movie/popular');
 
   popularMovies.results.forEach((movie) => {
     const container = document.getElementById('popular-movies');
     const movieDiv = document.createElement('div');
     movieDiv.innerHTML = `<div class="card">
-          <a href="movie-details.html?id=1">
-            <img
-              src="images/no-image.jpg"
+          <a href="movie-details.html?id=${movie.id}">
+            ${
+              movie.poster_path
+                ? `<img
+              src="https://image.tmdb.org/t/p/w500/${movie.poster_path}"
               class="card-img-top"
               alt="Movie Title"
-            />
+            />`
+                : `<img
+              src="images/no-image.jpg"
+              class="card-img-top"
+              alt="${movie.title}"
+            />`
+            }
           </a>
           <div class="card-body">
             <h5 class="card-title">${movie.title}</h5>
@@ -68,6 +112,7 @@ function init() {
     case '/':
     case '/index.html':
       console.log('home');
+      displayPopularMovies();
       break;
     case '/shows.html':
       console.log('shows');
@@ -84,7 +129,6 @@ function init() {
   }
 
   highlightLink();
-  displayPopularMovies();
 }
 
 document.addEventListener('DOMContentLoaded', init);
