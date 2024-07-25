@@ -77,7 +77,7 @@ async function displayPopularMovies() {
     container.appendChild(movieDiv);
   });
 }
-// Display movie details
+// Display movie details - used psuedo random numbers for budget / revenue / runtime
 
 async function displayMovieDetails() {
   const movieId = window.location.search;
@@ -86,12 +86,7 @@ async function displayMovieDetails() {
   const div = document.createElement('div');
 
   // Format budget in movie details
-  const formatBudget = (num) => {
-    const numArr = Array.from(num.toString());
-    numArr.forEach((digit) => {
-      console.log(digit);
-    });
-  };
+  const formatBudget = (num) => num.toLocaleString();
 
   popularMovies.results.forEach((movie) => {
     if (`?id=${movie.id}` === movieId) {
@@ -125,7 +120,8 @@ async function displayMovieDetails() {
             <p>
             ${movie.overview}
             </p>
-            <a href="#" target="_blank" class="btn">Visit Movie Homepage</a>
+            <a href="#" target="_blank" class="btn" style=
+            text-align:center;">Visit Movie Homepage</a>
           </div>
         </div>
         <div class="details-bottom">
@@ -134,17 +130,47 @@ async function displayMovieDetails() {
             <li><span class="text-secondary">Budget:</span> $${formatBudget(
               Math.floor(Math.random() * 10000000 + 1000000)
             )}</li>
-            <li><span class="text-secondary">Revenue:</span> $2,000,000</li>
-            <li><span class="text-secondary">Runtime:</span> 90 minutes</li>
+            <li><span class="text-secondary">Revenue:</span> $${formatBudget(
+              Math.floor(Math.random() * 10000000 + 1000000)
+            )}</li>
+            <li><span class="text-secondary">Runtime:</span> ${
+              Math.floor(Math.random() * 100) + 90
+            } minutes
+            </li>
             <li><span class="text-secondary">Status:</span> Released</li>
           </ul>
-          <h4>Production Companies</h4>
-          <div class="list-group">Company 1, Company 2, Company 3</div>
         </div>
       `;
+      // Overlay for bg image
+      displayBackgroundImage('movie', movie.backdrop_path);
     }
+
     container.appendChild(div);
   });
+}
+// Display backdrop on details page
+function displayBackgroundImage(type, backgroundPath) {
+  console.log(backgroundPath);
+
+  const overlayDiv = document.createElement('div');
+  overlayDiv.style.backgroundImage = `url(https://image.tmdb.org/t/p/original${backgroundPath})`;
+  overlayDiv.style.backgroundSize = 'cover';
+  overlayDiv.style.backgroundSPosition = 'center';
+  overlayDiv.style.backgroundRepeat = 'no-repeat';
+  overlayDiv.style.height = '100vh';
+  overlayDiv.style.width = '100vw';
+  overlayDiv.style.position = 'absolute';
+  overlayDiv.style.top = '0';
+  overlayDiv.style.left = '0';
+  overlayDiv.style.zIndex = '0';
+  overlayDiv.style.opacity = '0.1';
+  overlayDiv.style.pointerEvents = 'none'; // so bg img doesn't mess with header btns
+
+  if (type === 'movie') {
+    document.querySelector('#movie-details').appendChild(overlayDiv);
+  } else {
+    document.querySelector('#show-details').appendChild(overlayDiv);
+  }
 }
 
 // Display TV Shows
@@ -184,24 +210,82 @@ async function displayPopularShows() {
   });
 }
 
+// Display popular show details pages
+
+async function displayShowDetails() {
+  const showId = window.location.search;
+  console.log(showId);
+  const popularShows = await fetchApiData('tv/popular');
+
+  const container = document.querySelector('#show-details');
+  const div = document.createElement('div');
+  container.appendChild(div);
+
+  popularShows.results.forEach((show) => {
+    if (`?id=${show.id}` === showId) {
+      console.log(show);
+
+      div.innerHTML = `
+      <div class="details-top">
+          <div>
+
+          ${
+            show.poster_path
+              ? `<img
+            src="https://image.tmdb.org/t/p/w500/${show.poster_path}"
+            class="card-img-top"
+            alt="Movie Title"
+          />`
+              : `<img
+              src="images/no-image.jpg"
+              class="card-img-top"
+              alt="${show.name}"
+            />`
+          }
+          </div>
+          <div>
+            <h2>${show.name}</h2>
+            <p>
+              <i class="fas fa-star text-primary"></i>
+              ${String(show.vote_average).slice(0, -2)}
+            </p>
+            <p class="text-muted">Release Date: ${show.first_air_date}</p>
+            <p>
+            ${show.overview}
+            </p>
+            <a href="#" target="_blank" class="btn" style="text-align:center">Visit Show's Homepage</a>
+          </div>
+        </div>
+        <div class="details-bottom">
+          <h2>Show Info</h2>
+          <ul>
+            <li><span class="text-secondary">Status:</span> Released</li>
+          </ul>
+        </div>
+      `;
+      // Overlay for bg image
+      displayBackgroundImage('show', show.backdrop_path);
+
+      container.appendChild(div);
+    }
+  });
+}
+
 // Init App
 function init() {
   switch (globalState.currentPage) {
     case '/':
     case '/index.html':
-      console.log('home');
       displayPopularMovies();
       break;
     case '/shows.html':
-      console.log('shows');
       displayPopularShows();
       break;
     case '/movie-details.html':
-      console.log('movie details');
       displayMovieDetails();
       break;
     case '/tv-details.html':
-      console.log('tv details');
+      displayShowDetails();
       break;
     case '/search.html':
       console.log('search');
