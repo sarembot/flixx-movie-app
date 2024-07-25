@@ -1,8 +1,16 @@
 const globalState = {
   currentPage: window.location.pathname,
+  search: {
+    term: document.getElementById('search-term').value,
+    type: '',
+    page: 1,
+    totalPages: 1,
+  },
+  api: {
+    apiKey: '6969dc387a25455aada3bf89c5cbed31',
+    apiURL: 'https://api.themoviedb.org/3/',
+  },
 };
-
-console.log(globalState.currentPage);
 
 // Highlight active link
 function highlightLink() {
@@ -15,10 +23,22 @@ function highlightLink() {
   });
 }
 
+// Show Alert
+function showAlert(message, className) {
+  const alertEl = document.createElement('div');
+  alertEl.classList.add('alert', className);
+  alertEl.appendChild(document.createTextNode(message));
+  document.querySelector('#alert').appendChild(alertEl);
+
+  setTimeout(() => {
+    alertEl.remove();
+  }, 3000);
+}
+
 // Fetch data
 async function fetchApiData(endpoint) {
-  const API_KEY = '6969dc387a25455aada3bf89c5cbed31';
-  const API_URL = 'https://api.themoviedb.org/3/';
+  const API_KEY = globalState.api.apiKey;
+  const API_URL = globalState.api.apiURL;
 
   showSpinner();
 
@@ -32,6 +52,41 @@ async function fetchApiData(endpoint) {
 
   return data;
 }
+// request to search data
+async function searchApiData() {
+  const API_KEY = globalState.api.apiKey;
+  const API_URL = globalState.api.apiURL;
+
+  showSpinner();
+
+  const res = await fetch(
+    `${API_URL}search/${globalState.search.type}?api_key=${API_KEY}&language=en-US&query=${globalState.search.term}`
+  );
+
+  const data = await res.json();
+
+  hideSpinner();
+
+  return data;
+}
+
+// Search movie/show data
+async function search() {
+  const queryString = window.location.search;
+  const urlParams = new URLSearchParams(queryString);
+
+  globalState.search.type = urlParams.get('type');
+  globalState.search.term = urlParams.get('search-term');
+
+  if (globalState.search.term !== '' && globalState.search.term !== null) {
+    const results = await searchApiData();
+    console.log(results);
+  } else {
+    showAlert('The least you could do is search for a word.');
+  }
+}
+
+// Display search results
 
 // Spinner Toggles
 function showSpinner() {
@@ -173,6 +228,58 @@ function displayBackgroundImage(type, backgroundPath) {
   }
 }
 
+// Display Slider Movies
+async function displaySlider() {
+  const { results } = await fetchApiData('movie/now_playing');
+
+  results.forEach((movie) => {
+    const div = document.createElement('div');
+    div.classList.add('swiper-slide');
+
+    div.innerHTML = `
+ 
+            <a href="movie-details.html?id=${movie.id}">
+              <img src="https://image.tmdb.org/t/p/w200${
+                movie.poster_path
+              }" alt="${movie.title}" />
+            </a>
+            <h4 class="swiper-rating">
+              <i class="fas fa-star text-secondary"></i> ${String(
+                movie.vote_average
+              ).slice(0, -2)}
+            </h4>
+          </div>
+
+    `;
+    document.querySelector('.swiper-wrapper').appendChild(div);
+    initSwiper();
+  });
+}
+const initSwiper = () => {
+  const swiper = new Swiper('.swiper', {
+    slidesPerView: 1,
+    speed: 400,
+    spaceBetween: 30,
+    freeMode: true,
+    loop: true,
+    autoplay: {
+      delay: 4000,
+      disableOnInteraction: true,
+    },
+    breakpoints: {
+      500: {
+        slidesPerView: 2,
+      },
+      700: {
+        slidesPerView: 3,
+      },
+      1200: {
+        slidesPerView: 4,
+      },
+    },
+  });
+};
+
 // Display TV Shows
 async function displayPopularShows() {
   const shows = await fetchApiData('tv/popular');
@@ -214,7 +321,6 @@ async function displayPopularShows() {
 
 async function displayShowDetails() {
   const showId = window.location.search;
-  console.log(showId);
   const popularShows = await fetchApiData('tv/popular');
 
   const container = document.querySelector('#show-details');
@@ -276,6 +382,7 @@ function init() {
   switch (globalState.currentPage) {
     case '/':
     case '/index.html':
+      displaySlider();
       displayPopularMovies();
       break;
     case '/shows.html':
@@ -288,7 +395,7 @@ function init() {
       displayShowDetails();
       break;
     case '/search.html':
-      console.log('search');
+      search();
       break;
   }
 
