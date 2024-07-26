@@ -1,10 +1,13 @@
+// GLOBAL ---------------------------------------
+
 const globalState = {
   currentPage: window.location.pathname,
   search: {
-    term: document.getElementById('search-term').value,
+    term: document.getElementById('search-term'),
     type: '',
     page: 1,
     totalPages: 1,
+    totalResults: 0,
   },
   api: {
     apiKey: '6969dc387a25455aada3bf89c5cbed31',
@@ -23,8 +26,17 @@ function highlightLink() {
   });
 }
 
+// Spinner Toggles
+function showSpinner() {
+  document.querySelector('.spinner').classList.add('show');
+}
+
+function hideSpinner() {
+  document.querySelector('.spinner').classList.remove('show');
+}
+
 // Show Alert
-function showAlert(message, className) {
+function showAlert(message, className = 'error') {
   const alertEl = document.createElement('div');
   alertEl.classList.add('alert', className);
   alertEl.appendChild(document.createTextNode(message));
@@ -52,6 +64,9 @@ async function fetchApiData(endpoint) {
 
   return data;
 }
+
+// SEARCH ---------------------------------------
+
 // request to search data
 async function searchApiData() {
   const API_KEY = globalState.api.apiKey;
@@ -60,7 +75,7 @@ async function searchApiData() {
   showSpinner();
 
   const res = await fetch(
-    `${API_URL}search/${globalState.search.type}?api_key=${API_KEY}&language=en-US&query=${globalState.search.term}`
+    `${API_URL}search/${globalState.search.type}?api_key=${API_KEY}&language=en-US&query=${globalState.search.term}&page=${globalState.search.page}`
   );
 
   const data = await res.json();
@@ -79,25 +94,106 @@ async function search() {
   globalState.search.term = urlParams.get('search-term');
 
   if (globalState.search.term !== '' && globalState.search.term !== null) {
-    const results = await searchApiData();
-    console.log(results);
+    const { results, page, total_pages, total_results } = await searchApiData();
+
+    globalState.search.page = page;
+    globalState.search.totalPages = total_pages;
+    globalState.search.totalResults = total_results;
+
+    if (results.length === 0) {
+      showAlert('No results found');
+      return;
+    }
+
+    displaySearchResults(results);
+    document.querySelector('#search-term').value = '';
   } else {
-    showAlert('The least you could do is search for a word.');
+    showAlert('Please enter a search word.', 'error');
   }
 }
 
 // Display search results
+async function displaySearchResults(results) {
+  // Clear previous results
+  document.querySelector('#search-results-heading').innerHTML = '';
+  document.querySelector('#search-results').innerHTML = '';
+  document.querySelector('#pagination').innerHTML = '';
 
-// Spinner Toggles
-function showSpinner() {
-  document.querySelector('.spinner').classList.add('show');
+  const type = globalState.search.type;
+
+  results.forEach((result) => {
+    const container = document.getElementById('search-results');
+    const div = document.createElement('div');
+    div.innerHTML = `<div class="card">
+          <a href="${type}-details.html?id=${result.id}">
+            ${
+              result.poster_path
+                ? `<img
+              src="https://image.tmdb.org/t/p/w500/${result.poster_path}"
+              class="card-img-top"
+              alt="Movie Title"
+            />`
+                : `<img
+              src="images/no-image.jpg"
+              class="card-img-top"
+              alt="${type === 'movie' ? result.title : result.name}"
+            />`
+            }
+          </a>
+          <div class="card-body">
+            <h5 class="card-title">${
+              type === 'movie' ? result.title : result.name
+            }</h5>
+            <p class="card-text">
+              <small class="text-muted">Release: ${
+                type === 'movie' ? result.release_date : result.first_air_date
+              }</small>
+            </p>
+          </div>`;
+    document.querySelector('#search-results-heading').innerHTML = `
+              <h2>${results.length} of ${globalState.search.totalResults} results</h2>
+    `;
+
+    container.appendChild(div);
+  });
+
+  displayPagination();
 }
 
-function hideSpinner() {
-  document.querySelector('.spinner').classList.remove('show');
+// Display pagination for search results
+function displayPagination() {
+  const div = document.createElement('div');
+  div.classList.add('pagination');
+  div.innerHTML = `
+    <button class="btn btn-primary" id="prev">Prev</button>
+          <button class="btn btn-primary" id="next">Next</button>
+          <div class="page-counter">Page ${globalState.search.page} of ${globalState.search.totalPages}</div>
+  `;
+  document.querySelector('#pagination').appendChild(div);
+
+  if (globalState.search.page === 1) {
+    document.querySelector('#prev').disabled = true;
+  }
+  if (globalState.search.page === globalState.search.totalPages) {
+    document.querySelector('#next').disabled = true;
+  }
+
+  // Next page
+  document.querySelector('#next').addEventListener('click', async () => {
+    globalState.search.page++;
+    const { results, total_pages } = await searchApiData();
+    displaySearchResults(results);
+  });
+
+  // Previous page
+  document.querySelector('#prev').addEventListener('click', async () => {
+    globalState.search.page--;
+    const { results, total_pages } = await searchApiData();
+    displaySearchResults(results);
+  });
 }
 
-// Toggle between TV/Movies on home
+// MOVIES----------------------------------------
 
 // Display popular movies
 async function displayPopularMovies() {
@@ -228,57 +324,7 @@ function displayBackgroundImage(type, backgroundPath) {
   }
 }
 
-// Display Slider Movies
-async function displaySlider() {
-  const { results } = await fetchApiData('movie/now_playing');
-
-  results.forEach((movie) => {
-    const div = document.createElement('div');
-    div.classList.add('swiper-slide');
-
-    div.innerHTML = `
- 
-            <a href="movie-details.html?id=${movie.id}">
-              <img src="https://image.tmdb.org/t/p/w200${
-                movie.poster_path
-              }" alt="${movie.title}" />
-            </a>
-            <h4 class="swiper-rating">
-              <i class="fas fa-star text-secondary"></i> ${String(
-                movie.vote_average
-              ).slice(0, -2)}
-            </h4>
-          </div>
-
-    `;
-    document.querySelector('.swiper-wrapper').appendChild(div);
-    initSwiper();
-  });
-}
-const initSwiper = () => {
-  const swiper = new Swiper('.swiper', {
-    slidesPerView: 1,
-    speed: 400,
-    spaceBetween: 30,
-    freeMode: true,
-    loop: true,
-    autoplay: {
-      delay: 4000,
-      disableOnInteraction: true,
-    },
-    breakpoints: {
-      500: {
-        slidesPerView: 2,
-      },
-      700: {
-        slidesPerView: 3,
-      },
-      1200: {
-        slidesPerView: 4,
-      },
-    },
-  });
-};
+// TV SHOWS -------------------------------------
 
 // Display TV Shows
 async function displayPopularShows() {
@@ -376,6 +422,60 @@ async function displayShowDetails() {
     }
   });
 }
+
+// SLIDER ---------------------------------------
+
+// Display Slider Movies
+async function displaySlider() {
+  const { results } = await fetchApiData('movie/now_playing');
+
+  results.forEach((movie) => {
+    const div = document.createElement('div');
+    div.classList.add('swiper-slide');
+
+    div.innerHTML = `
+ 
+            <a href="movie-details.html?id=${movie.id}">
+              <img src="https://image.tmdb.org/t/p/w200${
+                movie.poster_path
+              }" alt="${movie.title}" />
+            </a>
+            <h4 class="swiper-rating">
+              <i class="fas fa-star text-secondary"></i> ${String(
+                movie.vote_average
+              ).slice(0, -2)}
+            </h4>
+          </div>
+
+    `;
+    document.querySelector('.swiper-wrapper').appendChild(div);
+    initSwiper();
+  });
+}
+const initSwiper = () => {
+  const swiper = new Swiper('.swiper', {
+    slidesPerView: 1,
+    speed: 400,
+    spaceBetween: 30,
+    freeMode: true,
+    loop: true,
+    autoplay: {
+      delay: 4000,
+      disableOnInteraction: true,
+    },
+    breakpoints: {
+      500: {
+        slidesPerView: 2,
+      },
+      700: {
+        slidesPerView: 3,
+      },
+      1200: {
+        slidesPerView: 4,
+      },
+    },
+  });
+};
 
 // Init App
 function init() {
